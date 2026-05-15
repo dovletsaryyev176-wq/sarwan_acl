@@ -1,0 +1,60 @@
+from flask import Flask, request, session
+import jwt
+from config import Config
+from api.auth.routes import auth_bp
+from api.admin import admin_bp
+from api.warehouse import warehouse_bp
+from api.courier import courier_bp
+from flask_cors import CORS
+import os
+from db import Db
+from api.operator import operator_bp
+from api.accounter import accounter_bp
+from api.director import director_bp
+
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    Db.init(
+        host=app.config.get('DB_HOST', 'localhost'),
+        user=app.config.get('DB_USER', 'root'),
+        password=app.config.get('DB_PASSWORD', ''),
+        database=app.config.get('DB_NAME', 'sarwan'),
+        maxconnections=app.config.get('DB_MAXCONNECTIONS', 20)
+    )
+    
+    cors_origins_env = os.environ.get("CORS_ORIGINS", "").strip()
+    if cors_origins_env:
+        allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+    else:
+        import re
+        allowed_origins = re.compile(r".*")
+
+    CORS(app, supports_credentials=True, resources={r"/*": {"origins": allowed_origins}}, allow_headers="*", expose_headers="*")
+
+    @app.before_request
+    def load_jwt_to_session():
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+                session['user_id'] = data.get('user_id')
+                session['role'] = data.get('role')
+            except Exception as e:
+                pass
+
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(warehouse_bp, url_prefix='/api/warehouse')
+    app.register_blueprint(courier_bp, url_prefix='/api/courier')
+    app.register_blueprint(operator_bp, url_prefix='/api/operator')
+    app.register_blueprint(accounter_bp, url_prefix='/api/accounter')
+    app.register_blueprint(director_bp, url_prefix='/api/director')
+
+    return app
+
+if __name__ == '__main__':
+    app = create_app()
+    port = int(os.environ.get('PORT', 5000))    
+    app.run(host='0.0.0.0', port=port, debug=False)
