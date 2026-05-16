@@ -1,53 +1,35 @@
 # Руководство по развёртыванию
 
----
-
 ## Вариант 1 — Новый сервер (чистая установка)
 
 ### 1. Перенести код
-```bash
 git clone <repo> /path/to/app
 cd /path/to/app
-```
 
 ### 2. Установить зависимости
-```bash
 pip install -r requirements.txt
-```
 
 ### 3. Настроить конфиг
 Отредактировать `config.py` — указать актуальные значения:
-```python
 DB_HOST     = "localhost"
 DB_USER     = "root"
 DB_PASSWORD = "your_password"
 DB_NAME     = "sarwan"
 SECRET_KEY  = "your_secret_key"
-```
 
 ### 4. Создать базу данных и применить схему
-```bash
 mysql -u root -p -e "CREATE DATABASE sarwan CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -u root -p sarwan < schema.sql
-```
 
 ### 5. Загрузить разрешения
-```bash
 python seed_permissions.py
-```
 
 ### 6. Создать администратора
-```bash
 python create_admin.py
-```
 Администратору автоматически выдаются все разрешения.
 
 ### 7. Запустить приложение
-```bash
 gunicorn -w 4 -b 127.0.0.1:5000 app:app
-```
-
----
 
 ## Вариант 2 — Существующий сервер с базой данных
 

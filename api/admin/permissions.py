@@ -21,52 +21,6 @@ def get_permissions():
         connection.close()
 
 
-@admin_bp.route('/permissions', methods=['POST'])
-@permission_required('permissions.create')
-def create_permission():
-    data = request.get_json()
-    name = data.get('name', '').strip()
-    description = data.get('description', '').strip() or None
-
-    if not name:
-        return jsonify({"error": "Название разрешения обязательно"}), 400
-
-    connection = Db.get_connection()
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "INSERT INTO permissions (name, description) VALUES (%s, %s)",
-                (name, description)
-            )
-            permission_id = cursor.lastrowid
-        connection.commit()
-        return jsonify({"id": permission_id, "name": name, "description": description}), 201
-    except Exception as e:
-        connection.rollback()
-        if "Duplicate entry" in str(e):
-            return jsonify({"error": f"Разрешение '{name}' уже существует"}), 409
-        return jsonify({"error": str(e)}), 500
-    finally:
-        connection.close()
-
-
-@admin_bp.route('/permissions/<int:permission_id>', methods=['DELETE'])
-@permission_required('permissions.delete')
-def delete_permission(permission_id):
-    connection = Db.get_connection()
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("DELETE FROM permissions WHERE id = %s", (permission_id,))
-            if cursor.rowcount == 0:
-                return jsonify({"error": "Разрешение не найдено"}), 404
-        connection.commit()
-        return jsonify({"message": "Разрешение удалено"}), 200
-    except Exception as e:
-        connection.rollback()
-        return jsonify({"error": str(e)}), 500
-    finally:
-        connection.close()
-
 
 @admin_bp.route('/me/permissions', methods=['GET'])
 def get_my_permissions():

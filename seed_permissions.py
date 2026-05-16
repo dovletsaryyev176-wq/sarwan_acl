@@ -9,8 +9,6 @@ from config import Config
 PERMISSIONS = [
     # permissions management
     ("permissions.view",      "Просмотр списка разрешений"),
-    ("permissions.create",    "Создание разрешения"),
-    ("permissions.delete",    "Удаление разрешения"),
     ("permissions.view_user", "Просмотр разрешений пользователя"),
     ("permissions.assign",    "Назначение разрешения пользователю"),
     ("permissions.revoke",    "Отзыв разрешения у пользователя"),
