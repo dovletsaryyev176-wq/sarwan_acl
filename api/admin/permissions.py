@@ -68,6 +68,28 @@ def delete_permission(permission_id):
         connection.close()
 
 
+@admin_bp.route('/me/permissions', methods=['GET'])
+def get_my_permissions():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Не авторизован"}), 401
+
+    connection = Db.get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT p.id, p.name, p.description
+                FROM user_permissions up
+                JOIN permissions p ON up.permission_id = p.id
+                WHERE up.user_id = %s
+                ORDER BY p.name
+            """, (user_id,))
+            permissions = cursor.fetchall()
+        return jsonify(permissions), 200
+    finally:
+        connection.close()
+
+
 @admin_bp.route('/users/<int:user_id>/permissions', methods=['GET'])
 @permission_required('permissions.view_user')
 def get_user_permissions(user_id):
