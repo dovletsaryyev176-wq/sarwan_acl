@@ -428,3 +428,19 @@ CREATE TABLE user_permissions (
     FOREIGN KEY (granted_by) REFERENCES users(id) ON DELETE SET NULL,
     UNIQUE KEY uq_user_permission (user_id, permission_id)
 );
+
+CREATE TABLE currencies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name_ru VARCHAR(100) NOT NULL,
+    name_tk VARCHAR(100) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE daily_expenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    reason VARCHAR(255) NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    currency_id INT NOT NULL,
+    date DATE NOT NULL,
+    FOREIGN KEY (currency_id) REFERENCES currencies(id)
+);

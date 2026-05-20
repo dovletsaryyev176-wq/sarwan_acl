@@ -20,6 +20,19 @@ PERMISSIONS = [
     ("brands.block",   "Блокировка бренда"),
     ("brands.unblock", "Разблокировка бренда"),
 
+    # currencies
+    ("currencies.view",    "Просмотр валют"),
+    ("currencies.create",  "Создание валюты"),
+    ("currencies.update",  "Редактирование валюты"),
+    ("currencies.block",   "Блокировка валюты"),
+    ("currencies.unblock", "Разблокировка валюты"),
+
+    # daily_expenses
+    ("daily_expenses.view",   "Просмотр ежедневных расходов"),
+    ("daily_expenses.create", "Создание ежедневного расхода"),
+    ("daily_expenses.update", "Редактирование ежедневного расхода"),
+    ("daily_expenses.delete", "Удаление ежедневного расхода"),
+
     # cities
     ("cities.view",      "Просмотр городов"),
     ("cities.create",    "Создание города"),
