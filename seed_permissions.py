@@ -81,6 +81,12 @@ PERMISSIONS = [
     ("discounts.update", "Редактирование скидки"),
     ("discounts.delete", "Деактивация скидки"),
 
+    # promotions
+    ("promotions.view",   "Просмотр акций"),
+    ("promotions.create", "Создание акции"),
+    ("promotions.update", "Редактирование акции"),
+    ("promotions.toggle", "Блокировка/разблокировка акции"),
+
     # districts
     ("districts.view",    "Просмотр районов"),
     ("districts.create",  "Создание района"),

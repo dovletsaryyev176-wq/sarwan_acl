@@ -12,43 +12,101 @@ def _calculate_order_price_internal(cursor, client_id, client_city_id, client_pr
 
     total_order_price = Decimal('0.0')
     order_items_calculated = []
-    
+    applied_promo_ids = set()
+    promo_order_counts = {}
+
+    # --- Resolve active TYPE_1 promotions for this client ---
+    current_date = datetime.now().date()
+    cursor.execute("""
+        SELECT p.id, p.fixed_price, p.order_count,
+               GROUP_CONCAT(ps.service_id) AS service_ids
+        FROM promotions p
+        JOIN promotion_services ps ON p.id = ps.promotion_id
+        WHERE p.is_active = 1
+          AND p.promotion_type = 'promotion_type_1'
+          AND p.start_date <= %s
+          AND p.end_date >= %s
+        GROUP BY p.id
+    """, (current_date, current_date))
+    active_promotions = cursor.fetchall()
+
+    order_service_ids = {item['service_id'] for item in items}
+    service_promotion_map = {}  # service_id → {id, fixed_price}
+
+    for promo in active_promotions:
+        promo_service_ids = [int(x) for x in promo['service_ids'].split(',')]
+        if not any(sid in order_service_ids for sid in promo_service_ids):
+            continue
+
+        cursor.execute("""
+            SELECT orders_remaining FROM client_promotion_usage
+            WHERE client_id = %s AND promotion_id = %s
+        """, (client_id, promo['id']))
+        usage = cursor.fetchone()
+
+        if usage is None:
+            eligible = int(promo['order_count']) > 0
+        else:
+            eligible = usage['orders_remaining'] > 0
+
+        if not eligible:
+            continue
+
+        promo_order_counts[promo['id']] = int(promo['order_count'])
+        fixed_price = Decimal(str(promo['fixed_price']))
+        for svc_id in promo_service_ids:
+            if svc_id not in service_promotion_map:
+                service_promotion_map[svc_id] = {'id': promo['id'], 'fixed_price': fixed_price}
+
+    # --- Calculate item prices ---
     for item in items:
         if 'service_id' not in item or 'quantity' not in item:
             raise ValueError('Каждая позиция (item) должна содержать service_id и quantity')
-            
+
         service_id = item['service_id']
         quantity = Decimal(str(item['quantity']))
-        
-        cursor.execute("""
-            SELECT price FROM service_prices 
-            WHERE service_id = %s AND city_id = %s AND price_type_id = %s
-        """, (service_id, client_city_id, client_price_type_id))
-        price_row = cursor.fetchone()
-        
-        price = None
-        total_item_price = None
-        
-        if price_row and price_row['price'] is not None:
-            price = Decimal(str(price_row['price']))
+        promotion = service_promotion_map.get(service_id)
+
+        if promotion:
+            price = promotion['fixed_price']
             total_item_price = price * quantity
-            total_order_price = total_order_price + total_item_price
-            
+            applied_promo_ids.add(promotion['id'])
+            promotion_id = promotion['id']
+        else:
+            cursor.execute("""
+                SELECT price FROM service_prices
+                WHERE service_id = %s AND city_id = %s AND price_type_id = %s
+            """, (service_id, client_city_id, client_price_type_id))
+            price_row = cursor.fetchone()
+            price = None
+            total_item_price = None
+            promotion_id = None
+            if price_row and price_row['price'] is not None:
+                price = Decimal(str(price_row['price']))
+                total_item_price = price * quantity
+
+        total_order_price += (total_item_price or Decimal('0.0'))
         order_items_calculated.append({
             'service_id': service_id,
             'quantity': quantity,
             'price': price,
-            'total_price': total_item_price or Decimal('0.0')
+            'total_price': total_item_price or Decimal('0.0'),
+            'promotion_id': promotion_id,
         })
 
+    # --- Calculate discounts (only for non-promotion items) ---
     applied_discounts = []
-    if total_order_price > 0:
+    base_order_price = sum(
+        itm['total_price'] for itm in order_items_calculated
+        if itm['promotion_id'] is None
+    )
+
+    if base_order_price > 0:
         now = datetime.now()
-        current_date = now.date()
         current_time = now.time()
-        
+
         discount_sql = """
-            SELECT 
+            SELECT
                 d.*,
                 GROUP_CONCAT(DISTINCT dc.city_id) as city_ids,
                 GROUP_CONCAT(DISTINCT ds.service_id) as service_ids,
@@ -67,40 +125,40 @@ def _calculate_order_price_internal(cursor, client_id, client_city_id, client_pr
         """
         cursor.execute(discount_sql, (current_date, current_date, current_time, current_time))
         potential_discounts = cursor.fetchall()
-        
+
         valid_discounts = []
         client_order_count = None
-        
+
         for d in potential_discounts:
             d_cities = [int(x) for x in d['city_ids'].split(',')] if d['city_ids'] else []
             d_services = [int(x) for x in d['service_ids'].split(',')] if d['service_ids'] else []
             d_prices = [int(x) for x in d['price_type_ids'].split(',')] if d['price_type_ids'] else []
-            
+
             if d_cities and client_city_id not in d_cities:
                 continue
             if d_prices and client_price_type_id not in d_prices:
                 continue
-                
+
             eligible_amount = Decimal('0.0')
             if d_services:
                 has_service = False
                 for itm in order_items_calculated:
-                    if itm['service_id'] in d_services:
+                    # Скидки не применяются к услугам, на которые действует акция
+                    if itm['service_id'] in d_services and itm['promotion_id'] is None:
                         has_service = True
-                        eligible_amount = eligible_amount + Decimal(str(itm['total_price']))
+                        eligible_amount += Decimal(str(itm['total_price']))
                 if not has_service:
                     continue
             else:
-                eligible_amount = total_order_price
+                eligible_amount = base_order_price
 
             if eligible_amount <= 0:
                 continue
 
-
             amount = Decimal('0.0')
             d_type = d['discount_type']
             val = Decimal(str(d['value'])) if d.get('value') is not None else Decimal('0.0')
-            
+
             if d_type == 'fixed_amount':
                 amount = min(val, eligible_amount)
             elif d_type == 'percentage':
@@ -114,11 +172,9 @@ def _calculate_order_price_internal(cursor, client_id, client_city_id, client_pr
                     if client_order_count is None:
                         cursor.execute("SELECT COUNT(*) as count FROM orders WHERE client_id = %s", (client_id,))
                         client_order_count = cursor.fetchone()['count']
-                        
-                    check_count = (client_order_count + 1) if for_creation else (client_order_count + 1)
-                    if check_count % nth == 0:
+                    if (client_order_count + 1) % nth == 0:
                         amount = eligible_amount
-            
+
             if amount > 0:
                 valid_discounts.append({
                     'id': d['id'],
@@ -126,23 +182,23 @@ def _calculate_order_price_internal(cursor, client_id, client_city_id, client_pr
                     'amount': amount,
                     'is_combinable': bool(d['is_combinable'])
                 })
-        
+
         combinable = [d for d in valid_discounts if d['is_combinable']]
         non_combinable = [d for d in valid_discounts if not d['is_combinable']]
-        
+
         combinable_total = sum(d['amount'] for d in combinable)
         best_nc = max(non_combinable, key=lambda x: x['amount']) if non_combinable else None
         best_nc_amount = best_nc['amount'] if best_nc else Decimal('0.0')
-        
+
         if combinable_total > best_nc_amount:
-            remaining = total_order_price
+            remaining = base_order_price
             for d in combinable:
                 amt = min(d['amount'], remaining)
                 if amt > 0:
                     applied_discounts.append({'id': d['id'], 'name': d['name'], 'amount': amt})
                     remaining -= amt
         elif best_nc:
-            amt = min(best_nc_amount, total_order_price)
+            amt = min(best_nc_amount, base_order_price)
             if amt > 0:
                 applied_discounts.append({'id': best_nc['id'], 'name': best_nc['name'], 'amount': amt})
 
@@ -156,7 +212,11 @@ def _calculate_order_price_internal(cursor, client_id, client_city_id, client_pr
         'order_items_calculated': order_items_calculated,
         'applied_discounts': applied_discounts,
         'total_discount_amount': total_discount_amount,
-        'final_order_price': final_order_price
+        'final_order_price': final_order_price,
+        'applied_promotions': [
+            {'id': pid, 'order_count': promo_order_counts[pid]}
+            for pid in applied_promo_ids
+        ],
     }
 
 
@@ -212,9 +272,10 @@ def calculate_order_price():
                 for item in calc_result['order_items_calculated']:
                     if item['price'] is not None: item['price'] = float(item['price'])
                     item['total_price'] = float(item['total_price'])
+                    item['quantity'] = float(item['quantity'])
                 for dc in calc_result['applied_discounts']:
                     dc['amount'] = float(dc['amount'])
-                    
+
                 return jsonify(calc_result), 200
 
             except ValueError as ve:
@@ -314,6 +375,7 @@ def create_order():
             total_discount_amount = calc_result['total_discount_amount']
             order_items_calculated = calc_result['order_items_calculated']
             applied_discounts = calc_result['applied_discounts']
+            applied_promotions = calc_result['applied_promotions']
 
             # 3. Расчет кэша/карты, если не были переданы, иначе берем из данных (или 0)
             calc_cash_amount = data.get('cash_amount')
@@ -368,11 +430,35 @@ def create_order():
             # 6. Система скидок
             for cd in applied_discounts:
                 cursor.execute("""
-                    INSERT INTO order_discounts (order_id, discount_id, discount_amount) 
+                    INSERT INTO order_discounts (order_id, discount_id, discount_amount)
                     VALUES (%s, %s, %s)
                 """, (order_id, cd['id'], cd['amount']))
                 cursor.execute("UPDATE discounts SET usage_count = usage_count + 1 WHERE id = %s", (cd['id'],))
 
+            # 6b. Система акций — списываем доступный счётчик заказов
+            for promo in applied_promotions:
+                promo_id = promo['id']
+                cursor.execute("""
+                    SELECT orders_remaining FROM client_promotion_usage
+                    WHERE client_id = %s AND promotion_id = %s
+                    FOR UPDATE
+                """, (data['client_id'], promo_id))
+                usage = cursor.fetchone()
+                if usage is None:
+                    cursor.execute("""
+                        INSERT INTO client_promotion_usage (client_id, promotion_id, orders_remaining)
+                        VALUES (%s, %s, %s)
+                    """, (data['client_id'], promo_id, promo['order_count'] - 1))
+                else:
+                    cursor.execute("""
+                        UPDATE client_promotion_usage
+                        SET orders_remaining = GREATEST(orders_remaining - 1, 0)
+                        WHERE client_id = %s AND promotion_id = %s
+                    """, (data['client_id'], promo_id))
+                cursor.execute("""
+                    INSERT IGNORE INTO order_promotions (order_id, promotion_id)
+                    VALUES (%s, %s)
+                """, (order_id, promo_id))
 
             # 5. Обработка кредита
             if data['payment_type'] == PaymentTypes.CREDIT and final_order_price > 0:
@@ -1262,6 +1348,7 @@ def update_order(order_id):
             # ── 3. Пересчёт суммы, если переданы items ─────────────────────
             new_items_calculated = None
             new_applied_discounts = None
+            new_applied_promotions = None
             new_final_price = None
             old_final_price = Decimal(str(order['total_amount'] or 0))
 
@@ -1295,6 +1382,7 @@ def update_order(order_id):
 
                 new_items_calculated = calc_result['order_items_calculated']
                 new_applied_discounts = calc_result['applied_discounts']
+                new_applied_promotions = calc_result['applied_promotions']
                 new_final_price = calc_result['final_order_price']
                 update_fields['total_amount'] = new_final_price
 
@@ -1331,6 +1419,20 @@ def update_order(order_id):
                     )
                 cursor.execute("DELETE FROM order_discounts WHERE order_id = %s", (order_id,))
 
+                # Откатить счётчики старых акций
+                cursor.execute("SELECT promotion_id FROM order_promotions WHERE order_id = %s", (order_id,))
+                old_promo_ids = [r['promotion_id'] for r in cursor.fetchall()]
+                for old_pid in old_promo_ids:
+                    cursor.execute("SELECT order_count FROM promotions WHERE id = %s", (old_pid,))
+                    promo_row = cursor.fetchone()
+                    if promo_row:
+                        cursor.execute("""
+                            UPDATE client_promotion_usage
+                            SET orders_remaining = LEAST(orders_remaining + 1, %s)
+                            WHERE client_id = %s AND promotion_id = %s
+                        """, (promo_row['order_count'], order['client_id'], old_pid))
+                cursor.execute("DELETE FROM order_promotions WHERE order_id = %s", (order_id,))
+
                 # Удалить старые позиции
                 cursor.execute("DELETE FROM order_items WHERE order_id = %s", (order_id,))
 
@@ -1354,6 +1456,31 @@ def update_order(order_id):
                     cursor.execute(
                         "UPDATE discounts SET usage_count = usage_count + 1 WHERE id = %s", (cd['id'],)
                     )
+
+                # Применить новые акции
+                for promo in new_applied_promotions:
+                    promo_id = promo['id']
+                    cursor.execute("""
+                        SELECT orders_remaining FROM client_promotion_usage
+                        WHERE client_id = %s AND promotion_id = %s
+                        FOR UPDATE
+                    """, (order['client_id'], promo_id))
+                    usage = cursor.fetchone()
+                    if usage is None:
+                        cursor.execute("""
+                            INSERT INTO client_promotion_usage (client_id, promotion_id, orders_remaining)
+                            VALUES (%s, %s, %s)
+                        """, (order['client_id'], promo_id, promo['order_count'] - 1))
+                    else:
+                        cursor.execute("""
+                            UPDATE client_promotion_usage
+                            SET orders_remaining = GREATEST(orders_remaining - 1, 0)
+                            WHERE client_id = %s AND promotion_id = %s
+                        """, (order['client_id'], promo_id))
+                    cursor.execute("""
+                        INSERT IGNORE INTO order_promotions (order_id, promotion_id)
+                        VALUES (%s, %s)
+                    """, (order_id, promo_id))
 
             # ── 6. Корректировка кредита при изменении суммы ───────────────
             current_payment_type = update_fields.get('payment_type', order['payment_type'])

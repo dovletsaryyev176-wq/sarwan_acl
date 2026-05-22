@@ -1,6 +1,6 @@
 from flask import jsonify
 from . import admin_bp
-from all_types_description import DeliveryTimes, OrderStatuses, PaymentTypes, ServiceTypes, TransactionTypes, DiscountTypes
+from all_types_description import DeliveryTimes, OrderStatuses, PaymentTypes, ServiceTypes, TransactionTypes, DiscountTypes, PromotionTypes
 
 # ------------------------------
 # GET: Варианты времени доставки
@@ -75,5 +75,16 @@ def get_discount_types():
     data = [
         {"value": key, "label": DiscountTypes.LABELS[key]}
         for key in DiscountTypes.LABELS
+    ]
+    return jsonify(data), 200
+
+# ------------------------------
+# GET: Типы акций
+# ------------------------------
+@admin_bp.route('/promotion-types', methods=['GET'])
+def get_promotion_types():
+    data = [
+        {"value": choice, "label": PromotionTypes.LABELS[choice]}
+        for choice in PromotionTypes.CHOICES
     ]
     return jsonify(data), 200

@@ -444,3 +444,41 @@ CREATE TABLE daily_expenses (
     date DATE NOT NULL,
     FOREIGN KEY (currency_id) REFERENCES currencies(id)
 );
+
+CREATE TABLE promotions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    promotion_type VARCHAR(50) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    fixed_price DECIMAL(10,2) NOT NULL,
+    order_count INT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE promotion_services (
+    promotion_id INT NOT NULL,
+    service_id INT NOT NULL,
+    PRIMARY KEY (promotion_id, service_id),
+    FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+);
+
+CREATE TABLE client_promotion_usage (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    client_id INT NOT NULL,
+    promotion_id INT NOT NULL,
+    orders_remaining INT NOT NULL,
+    UNIQUE KEY uk_client_promotion (client_id, promotion_id),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+    FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE order_promotions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    promotion_id INT NOT NULL,
+    UNIQUE KEY uk_order_promotion (order_id, promotion_id),
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (promotion_id) REFERENCES promotions(id)
+);

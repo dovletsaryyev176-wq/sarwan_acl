@@ -20,5 +20,6 @@ from . import transports
 from . import users
 from . import warehouses
 from . import permissions
+from . import promotion
 
  

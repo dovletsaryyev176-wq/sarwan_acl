@@ -89,6 +89,16 @@ class TransactionTypes:
         WRITE_OFF: {'ru': 'Списание', 'tm': 'Hasapdan çykarmak'},
     }
 
+class PromotionTypes:
+    TYPE_1 = 'promotion_type_1'
+
+    CHOICES = [TYPE_1]
+
+    LABELS = {
+        TYPE_1: {'ru': 'Акция тип 1', 'tm': 'Aksiýa görnüş 1'},
+    }
+
+
 class DiscountTypes:
     FIXED_AMOUNT = 'fixed_amount'      # фиксированная цена
     PERCENTAGE = 'percentage'    # скидка в процентах
