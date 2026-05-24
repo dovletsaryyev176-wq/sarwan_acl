@@ -482,3 +482,32 @@ CREATE TABLE order_promotions (
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
     FOREIGN KEY (promotion_id) REFERENCES promotions(id)
 );
+
+CREATE TABLE department_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name_ru VARCHAR(255) NOT NULL,
+    name_tk VARCHAR(255) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE departments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name_ru VARCHAR(255) NOT NULL,
+    name_tk VARCHAR(255) NOT NULL,
+    department_type_id INT NOT NULL,
+    parent_department_id INT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    FOREIGN KEY (department_type_id) REFERENCES department_types(id),
+    FOREIGN KEY (parent_department_id) REFERENCES departments(id)
+);
+
+CREATE TABLE staff_positions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    position_name_ru VARCHAR(255) NOT NULL,
+    position_name_tk VARCHAR(255) NOT NULL,
+    slots DECIMAL(10,2) NOT NULL,
+    salary DECIMAL(15,2) NOT NULL,
+    department_id INT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);

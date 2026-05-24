@@ -214,6 +214,27 @@ PERMISSIONS = [
     ("director.yearly_monthly_income",  "Доход по месяцам за год"),
     ("director.monthly_income",         "Доход за конкретный месяц"),
 
+    # department_types
+    ("department_types.view",    "Просмотр типов подразделений"),
+    ("department_types.create",  "Создание типа подразделения"),
+    ("department_types.update",  "Редактирование типа подразделения"),
+    ("department_types.block",   "Блокировка типа подразделения"),
+    ("department_types.unblock", "Разблокировка типа подразделения"),
+
+    # departments
+    ("departments.view",    "Просмотр подразделений"),
+    ("departments.create",  "Создание подразделения"),
+    ("departments.update",  "Редактирование подразделения"),
+    ("departments.block",   "Блокировка подразделения"),
+    ("departments.unblock", "Разблокировка подразделения"),
+
+    # staff_positions
+    ("staff_positions.view",    "Просмотр штатных позиций"),
+    ("staff_positions.create",  "Создание штатной позиции"),
+    ("staff_positions.update",  "Редактирование штатной позиции"),
+    ("staff_positions.block",   "Блокировка штатной позиции"),
+    ("staff_positions.unblock", "Разблокировка штатной позиции"),
+
     # marketing
     ("marketing.clients.view", "Просмотр клиентов с маркетинговой статистикой"),
 

@@ -9,7 +9,7 @@ cd /path/to/app
 ### 2. Установить зависимости
 pip install -r requirements.txt
 
-### 3. Настроить конфиг
+### 3. Настроить конфиг и .env
 Отредактировать `config.py` — указать актуальные значения:
 DB_HOST     = "localhost"
 DB_USER     = "root"
@@ -31,31 +31,13 @@ python create_admin.py
 ### 7. Запустить приложение
 gunicorn -w 4 -b 127.0.0.1:5000 app:app
 
+
+
 ## Вариант 2 — Существующий сервер с базой данных
 
 > ⚠️ Не запускать `schema.sql` — он перезапишет все данные.
 
 ### 1. Добавить новые таблицы в существующую БД
-```sql
-CREATE TABLE IF NOT EXISTS permissions (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL UNIQUE,
-    description VARCHAR(255) NULL,
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS user_permissions (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    user_id       INT NOT NULL,
-    permission_id INT NOT NULL,
-    granted_by    INT NULL,
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id)       REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE,
-    FOREIGN KEY (granted_by)    REFERENCES users(id) ON DELETE SET NULL,
-    UNIQUE KEY uq_user_permission (user_id, permission_id)
-);
-```
 
 ### 2. Загрузить разрешения
 ```bash
