@@ -214,6 +214,9 @@ PERMISSIONS = [
     ("director.yearly_monthly_income",  "Доход по месяцам за год"),
     ("director.monthly_income",         "Доход за конкретный месяц"),
 
+    # marketing
+    ("marketing.clients.view", "Просмотр клиентов с маркетинговой статистикой"),
+
     # orders
     ("orders.calculate",            "Расчёт стоимости заказа без создания"),
     ("orders.create",               "Создание заказа"),

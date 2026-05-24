@@ -11,6 +11,8 @@ from db import Db
 from api.operator import operator_bp
 from api.accounter import accounter_bp
 from api.director import director_bp
+from api.marketing import marketing_bp
+from api.worker import worker_bp
 
 def create_app():
     app = Flask(__name__)
@@ -51,6 +53,8 @@ def create_app():
     app.register_blueprint(operator_bp, url_prefix='/api/operator')
     app.register_blueprint(accounter_bp, url_prefix='/api/accounter')
     app.register_blueprint(director_bp, url_prefix='/api/director')
+    app.register_blueprint(marketing_bp,url_prefix='/api/marketing')
+    app.register_blueprint(worker_bp,url_prefix='/api/worker')
 
     return app
 

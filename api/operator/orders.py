@@ -1,10 +1,36 @@
 from flask import Blueprint, jsonify, request, session
 from datetime import datetime, date, timedelta
 from decimal import Decimal
+import requests
 from db import Db
 from . import operator_bp
 from acl import permission_required
 from all_types_description import PaymentTypes, DeliveryTimes, OrderStatuses
+
+_ORDER_CONFIRMATION_SMS = "Siziň zakazyňyz üstünikli hasaba alyndy"
+
+def _send_order_confirmation_sms(phone, order_id, sender_id):
+    try:
+        requests.post(
+            "https://tagma.biz/otp/send-code",
+            json={"code": _ORDER_CONFIRMATION_SMS, "phoneNumber": phone},
+            timeout=2
+        )
+    except Exception as e:
+        print(f"SMS send error for order #{order_id}: {e}")
+
+    sms_conn = Db.get_connection()
+    try:
+        with sms_conn.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO sms_history (sender_id, recipient_phone, message_text) VALUES (%s, %s, %s)",
+                (sender_id, phone, _ORDER_CONFIRMATION_SMS)
+            )
+        sms_conn.commit()
+    except Exception as e:
+        print(f"SMS history log error for order #{order_id}: {e}")
+    finally:
+        sms_conn.close()
 
 def _calculate_order_price_internal(cursor, client_id, client_city_id, client_price_type_id, items, for_creation=False):
     from decimal import Decimal
@@ -343,11 +369,13 @@ def create_order():
             client_city_id = address_info['city_id']
                 
             cursor.execute("""
-                SELECT id FROM client_phones 
+                SELECT id, phone FROM client_phones
                 WHERE id = %s AND client_id = %s
             """, (data['client_phone_id'], data['client_id']))
-            if not cursor.fetchone():
+            phone_row = cursor.fetchone()
+            if not phone_row:
                 return jsonify({'error': 'Телефон клиента не найден или не принадлежит указанному клиенту'}), 404
+            client_phone = phone_row['phone']
                 
             # Проверка курьера (если передан)
             if data.get('courier_id'):
@@ -497,7 +525,9 @@ def create_order():
                 """, (credit_id, order_id, 'charge', final_order_price, f'Списание за заказ #{order_id}'))
 
             conn.commit()
-            
+
+            _send_order_confirmation_sms(client_phone, order_id, user_id)
+
             # 6. Возвращаем созданный заказ со всеми деталями
             cursor.execute("SELECT * FROM orders WHERE id = %s", (order_id,))
             new_order = cursor.fetchone()
