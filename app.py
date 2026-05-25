@@ -1,4 +1,4 @@
-from flask import Flask, request, session
+from flask import Flask, request, session, send_from_directory
 import jwt
 from config import Config
 from api.auth.routes import auth_bp
@@ -55,6 +55,12 @@ def create_app():
     app.register_blueprint(director_bp, url_prefix='/api/director')
     app.register_blueprint(marketing_bp,url_prefix='/api/marketing')
     app.register_blueprint(worker_bp,url_prefix='/api/worker')
+
+    uploads_dir = os.path.join(app.root_path, 'uploads')
+
+    @app.route('/uploads/<path:filename>')
+    def serve_upload(filename):
+        return send_from_directory(uploads_dir, filename)
 
     return app
 
