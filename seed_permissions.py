@@ -235,6 +235,15 @@ PERMISSIONS = [
     ("staff_positions.block",   "Блокировка штатной позиции"),
     ("staff_positions.unblock", "Разблокировка штатной позиции"),
 
+    # employees
+    ("employees.view",   "Просмотр списка сотрудников"),
+    ("employees.create", "Создание сотрудника"),
+    ("employees.update", "Редактирование сотрудника"),
+
+    # attendance
+    ("attendance.checkin", "Фиксация прихода/ухода сотрудника"),
+    ("attendance.view",    "Просмотр посещаемости сотрудников"),
+
     # marketing
     ("marketing.clients.view", "Просмотр клиентов с маркетинговой статистикой"),
 

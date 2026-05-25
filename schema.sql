@@ -511,3 +511,47 @@ CREATE TABLE staff_positions (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (department_id) REFERENCES departments(id)
 );
+
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    last_name VARCHAR(100) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100) NULL,
+    passport_number VARCHAR(50) NOT NULL UNIQUE,
+    registered_address TEXT NOT NULL,
+    actual_address TEXT NOT NULL,
+    gender VARCHAR(10) NOT NULL,
+    birth_date DATE NOT NULL,
+    staff_position_id INT NOT NULL,
+    department_id INT NOT NULL,
+    rate DECIMAL(10,2) NOT NULL,
+    work_start_time TIME NOT NULL,
+    work_end_time TIME NOT NULL,
+    is_official BOOLEAN NOT NULL DEFAULT FALSE,
+    user_id INT NULL,
+    photo_path VARCHAR(500) NULL,
+    qr_path VARCHAR(500) NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_position_id) REFERENCES staff_positions(id),
+    FOREIGN KEY (department_id) REFERENCES departments(id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE employee_phones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NOT NULL,
+    phone VARCHAR(30) NOT NULL,
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+CREATE TABLE employee_attendance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NOT NULL,
+    date DATE NOT NULL,
+    check_in DATETIME NULL,
+    check_out DATETIME NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'нет',
+    UNIQUE KEY uq_attendance (employee_id, date),
+    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+);
