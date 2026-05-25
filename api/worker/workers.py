@@ -282,6 +282,51 @@ def get_employees():
 
 
 # =============================================================
+# Получение одного сотрудника
+# =============================================================
+
+@worker_bp.route('/employees/<int:employee_id>', methods=['GET'])
+@permission_required('employees.view')
+def get_employee(employee_id):
+    conn = Db.get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(_EMPLOYEE_SELECT + " WHERE e.id = %s", (employee_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"error": "Сотрудник не найден"}), 404
+
+            _format_employee(row)
+
+            cursor.execute(
+                "SELECT id, phone FROM employee_phones WHERE employee_id = %s",
+                (employee_id,)
+            )
+            row['phones'] = cursor.fetchall()
+
+            cursor.execute(
+                """SELECT id, date, check_in, check_out, status
+                   FROM employee_attendance
+                   WHERE employee_id = %s
+                   ORDER BY date DESC""",
+                (employee_id,)
+            )
+            attendance = cursor.fetchall()
+            for rec in attendance:
+                if rec.get('date') and hasattr(rec['date'], 'isoformat'):
+                    rec['date'] = rec['date'].isoformat()
+                if rec.get('check_in') and hasattr(rec['check_in'], 'isoformat'):
+                    rec['check_in'] = rec['check_in'].isoformat()
+                if rec.get('check_out') and hasattr(rec['check_out'], 'isoformat'):
+                    rec['check_out'] = rec['check_out'].isoformat()
+            row['attendance'] = attendance
+
+        return jsonify(row), 200
+    finally:
+        conn.close()
+
+
+# =============================================================
 # Обновление сотрудника
 # =============================================================
 
