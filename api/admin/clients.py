@@ -418,7 +418,7 @@ def get_client_addresses(client_id):
 
             cursor.execute("""
                 SELECT ca.id, ca.city_id, ca.district_id, ca.street_id, ca.address_line,
-                       ca.appartment, ca.entrance, ca.floor,
+                       ca.appartment, ca.entrance, ca.floor, ca.is_active,
                        ct.name as city_name, d.name as district_name, s.name as street_name
                 FROM client_addresses ca
                 LEFT JOIN cities ct ON ca.city_id = ct.id
@@ -436,7 +436,8 @@ def get_client_addresses(client_id):
                     "address_line": a['address_line'],
                     "appartment": a['appartment'],
                     "entrance": a['entrance'],
-                    "floor": a['floor']
+                    "floor": a['floor'],
+                    "is_active": bool(a['is_active'])
                 } for a in cursor.fetchall()
             ]
 
@@ -506,6 +507,26 @@ def update_address(address_id):
             conn.commit()
 
         return jsonify({"message": "Адрес обновлен"}), 200
+    finally:
+        conn.close()
+
+
+@admin_bp.route('/clients/addresses/<int:address_id>/toggle', methods=['PATCH'])
+@permission_required('clients.toggle_address')
+def toggle_address(address_id):
+    conn = Db.get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT is_active FROM client_addresses WHERE id = %s", (address_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"error": "Адрес не найден"}), 404
+
+            new_state = not bool(row['is_active'])
+            cursor.execute("UPDATE client_addresses SET is_active = %s WHERE id = %s", (new_state, address_id))
+            conn.commit()
+
+        return jsonify({"id": address_id, "is_active": new_state}), 200
     finally:
         conn.close()
 

@@ -555,3 +555,5 @@ CREATE TABLE employee_attendance (
     UNIQUE KEY uq_attendance (employee_id, date),
     FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
 );
+
+ALTER TABLE client_addresses ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;

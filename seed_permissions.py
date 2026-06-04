@@ -55,6 +55,7 @@ PERMISSIONS = [
     ("clients.add_address",        "Добавление адреса клиенту"),
     ("clients.update_address",     "Редактирование адреса клиента"),
     ("clients.delete_address",     "Удаление адреса клиента"),
+    ("clients.toggle_address",     "Блокировка/разблокировка адреса клиента"),
 
     # counterparties
     ("counterparties.view",    "Просмотр контрагентов"),
