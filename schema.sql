@@ -568,6 +568,12 @@ CREATE TABLE service_points (
     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
 );
 
+CREATE TABLE settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    `key` VARCHAR(100) NOT NULL UNIQUE,
+    `value` VARCHAR(255) NOT NULL
+);
+
 CREATE TABLE sms_templates (
     id INT AUTO_INCREMENT PRIMARY KEY,
     `key` VARCHAR(100) NOT NULL UNIQUE,

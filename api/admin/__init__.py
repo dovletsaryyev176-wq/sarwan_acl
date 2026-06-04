@@ -24,3 +24,4 @@ from . import promotion
 from . import points
 from . import cashback
 from . import sms_templates
+from . import rate

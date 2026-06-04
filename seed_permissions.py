@@ -264,6 +264,10 @@ PERMISSIONS = [
     ("sms_templates.view",   "Просмотр SMS-шаблонов"),
     ("sms_templates.update", "Редактирование текста SMS-шаблона"),
 
+    # rate
+    ("rate.view",   "Просмотр курса балла к манату"),
+    ("rate.update", "Редактирование курса балла к манату"),
+
     # orders
     ("orders.calculate",            "Расчёт стоимости заказа без создания"),
     ("orders.create",               "Создание заказа"),
@@ -303,6 +307,37 @@ def seed():
         conn.close()
 
 
+SETTINGS = [
+    ("rate", "1"),
+]
+
+
+def seed_settings():
+    conn = pymysql.connect(
+        host=Config.DB_HOST,
+        user=Config.DB_USER,
+        password=Config.DB_PASSWORD,
+        database=Config.DB_NAME,
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+    )
+    try:
+        with conn.cursor() as cursor:
+            for key, value in SETTINGS:
+                cursor.execute(
+                    """
+                    INSERT INTO settings (`key`, `value`)
+                    VALUES (%s, %s)
+                    ON DUPLICATE KEY UPDATE `key` = `key`
+                    """,
+                    (key, value),
+                )
+        conn.commit()
+        print(f"Готово: обработано {len(SETTINGS)} настроек.")
+    finally:
+        conn.close()
+
+
 SMS_TEMPLATES = [
     ("order_confirmation", "Siziň zakazyňyz üstünikli hasaba alyndy"),
 ]
@@ -336,4 +371,5 @@ def seed_sms_templates():
 
 if __name__ == "__main__":
     seed()
+    seed_settings()
     seed_sms_templates()
