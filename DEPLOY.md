@@ -4,7 +4,6 @@
 
 ### 1. Перенести код
 git clone <repo> /path/to/app
-cd /path/to/app
 
 ### 2. Установить зависимости
 pip install -r requirements.txt
@@ -30,7 +29,6 @@ python create_admin.py
 
 ### 7. Запустить приложение
 gunicorn -w 4 -b 127.0.0.1:5000 app:app
-
 
 
 ## Вариант 2 — Существующий сервер с базой данных
@@ -60,10 +58,7 @@ git pull
 
 ### 5. Перезапустить приложение
 ```bash
-systemctl restart gunicorn
-# или
-supervisorctl restart app
-# или как настроено на сервере
+gunicorn -w 4 -b 127.0.0.1:5000 app:app
 ```
 
 ---
@@ -88,7 +83,7 @@ WHERE u.role = 'admin' AND up.id IS NULL;
 "
 
 # 4. Перезапустить приложение
-systemctl restart gunicorn
+gunicorn -w 4 -b 127.0.0.1:5000 app:app
 ```
 
 ---
