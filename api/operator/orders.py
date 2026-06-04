@@ -7,30 +7,33 @@ from . import operator_bp
 from acl import permission_required
 from all_types_description import PaymentTypes, DeliveryTimes, OrderStatuses
 
-_ORDER_CONFIRMATION_SMS = "Siziň zakazyňyz üstünikli hasaba alyndy"
-
 def _send_order_confirmation_sms(phone, order_id, sender_id):
+    conn = Db.get_connection()
     try:
-        requests.post(
-            "https://tagma.biz/otp/send-code",
-            json={"code": _ORDER_CONFIRMATION_SMS, "phoneNumber": phone},
-            timeout=2
-        )
-    except Exception as e:
-        print(f"SMS send error for order #{order_id}: {e}")
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT `text` FROM sms_templates WHERE `key` = 'order_confirmation'")
+            row = cursor.fetchone()
+            text = row['text'] if row else ""
 
-    sms_conn = Db.get_connection()
-    try:
-        with sms_conn.cursor() as cursor:
+        try:
+            requests.post(
+                "https://tagma.biz/otp/send-code",
+                json={"code": text, "phoneNumber": phone},
+                timeout=2
+            )
+        except Exception as e:
+            print(f"SMS send error for order #{order_id}: {e}")
+
+        with conn.cursor() as cursor:
             cursor.execute(
                 "INSERT INTO sms_history (sender_id, recipient_phone, message_text) VALUES (%s, %s, %s)",
-                (sender_id, phone, _ORDER_CONFIRMATION_SMS)
+                (sender_id, phone, text)
             )
-        sms_conn.commit()
+        conn.commit()
     except Exception as e:
         print(f"SMS history log error for order #{order_id}: {e}")
     finally:
-        sms_conn.close()
+        conn.close()
 
 def _calculate_order_price_internal(cursor, client_id, client_city_id, client_price_type_id, items, for_creation=False):
     from decimal import Decimal

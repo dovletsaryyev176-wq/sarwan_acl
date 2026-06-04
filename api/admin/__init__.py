@@ -21,5 +21,6 @@ from . import users
 from . import warehouses
 from . import permissions
 from . import promotion
-
- 
+from . import points
+from . import cashback
+from . import sms_templates

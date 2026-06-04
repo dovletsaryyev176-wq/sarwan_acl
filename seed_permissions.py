@@ -248,6 +248,22 @@ PERMISSIONS = [
     # marketing
     ("marketing.clients.view", "Просмотр клиентов с маркетинговой статистикой"),
 
+    # points
+    ("points.view",   "Просмотр цены услуг за баллы"),
+    ("points.create", "Создание записи о цене услуг за баллы"),
+    ("points.update", "Редактирование цены услуг за баллы"),
+    ("points.delete", "Удаление цены услуг за баллы"),
+
+    # cashback
+    ("cashback.view",   "Просмотр кешбэка за услуги"),
+    ("cashback.create", "Создание записи кешбэка за услугу"),
+    ("cashback.update", "Редактирование кешбэка за услугу"),
+    ("cashback.delete", "Удаление кешбэка за услугу"),
+
+    # sms_templates
+    ("sms_templates.view",   "Просмотр SMS-шаблонов"),
+    ("sms_templates.update", "Редактирование текста SMS-шаблона"),
+
     # orders
     ("orders.calculate",            "Расчёт стоимости заказа без создания"),
     ("orders.create",               "Создание заказа"),
@@ -287,5 +303,37 @@ def seed():
         conn.close()
 
 
+SMS_TEMPLATES = [
+    ("order_confirmation", "Siziň zakazyňyz üstünikli hasaba alyndy"),
+]
+
+
+def seed_sms_templates():
+    conn = pymysql.connect(
+        host=Config.DB_HOST,
+        user=Config.DB_USER,
+        password=Config.DB_PASSWORD,
+        database=Config.DB_NAME,
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+    )
+    try:
+        with conn.cursor() as cursor:
+            for key, text in SMS_TEMPLATES:
+                cursor.execute(
+                    """
+                    INSERT INTO sms_templates (key, text)
+                    VALUES (%s, %s)
+                    ON DUPLICATE KEY UPDATE key = key
+                    """,
+                    (key, text),
+                )
+        conn.commit()
+        print(f"Готово: обработано {len(SMS_TEMPLATES)} SMS-шаблонов.")
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     seed()
+    seed_sms_templates()

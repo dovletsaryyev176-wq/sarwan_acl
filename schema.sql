@@ -556,4 +556,27 @@ CREATE TABLE employee_attendance (
     FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
 );
 
+
+
+
 ALTER TABLE client_addresses ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
+CREATE TABLE service_points (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    service_id INT NOT NULL UNIQUE,
+    points DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+);
+
+CREATE TABLE sms_templates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    `key` VARCHAR(100) NOT NULL UNIQUE,
+    `text` TEXT NOT NULL
+);
+
+CREATE TABLE service_cashback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    service_id INT NOT NULL UNIQUE,
+    cashback DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+);
