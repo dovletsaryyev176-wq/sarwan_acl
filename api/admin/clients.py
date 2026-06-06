@@ -176,7 +176,7 @@ def get_client(client_id):
 
             cursor.execute("""
                 SELECT ca.id, ca.city_id, ca.district_id, ca.street_id, ca.address_line,
-                       ca.appartment, ca.entrance, ca.floor,
+                       ca.appartment, ca.entrance, ca.floor, ca.is_active,
                        ct.name as city_name, d.name as district_name, s.name as street_name
                 FROM client_addresses ca
                 LEFT JOIN cities ct ON ca.city_id = ct.id
@@ -224,6 +224,7 @@ def get_client(client_id):
                 "addresses": [
                     {
                         "id": a['id'],
+                        "is_active": bool(a['is_active']),
                         "city_id": a['city_id'], "city_name": a['city_name'],
                         "district_id": a['district_id'], "district_name": a['district_name'],
                         "street_id": a['street_id'], "street_name": a['street_name'],
