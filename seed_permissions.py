@@ -328,7 +328,7 @@ def seed_settings():
                     """
                     INSERT INTO settings (`key`, `value`)
                     VALUES (%s, %s)
-                    ON DUPLICATE KEY UPDATE `key` = `key`
+                    ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)
                     """,
                     (key, value),
                 )
@@ -357,9 +357,9 @@ def seed_sms_templates():
             for key, text in SMS_TEMPLATES:
                 cursor.execute(
                     """
-                    INSERT INTO sms_templates (key, text)
+                    INSERT INTO sms_templates (`key`, `text`)
                     VALUES (%s, %s)
-                    ON DUPLICATE KEY UPDATE key = key
+                    ON DUPLICATE KEY UPDATE `text` = VALUES(`text`)
                     """,
                     (key, text),
                 )
