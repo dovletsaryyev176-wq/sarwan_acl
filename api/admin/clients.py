@@ -129,7 +129,7 @@ def get_all_clients():
 def create_client():
     data = request.get_json()
     price_type_id = data.get('price_type_id')
-    full_name = data.get('full_name')
+    full_name = data.get('full_name') or ''
 
     if not price_type_id:
         return jsonify({"error": "Нужно выбрать тип цены"}), 400

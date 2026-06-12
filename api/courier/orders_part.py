@@ -640,6 +640,13 @@ def get_courier_single_order(order_id):
             if user_role == 'courier' and order['courier_id'] != user_id:
                 return jsonify({'error': 'Этот заказ не назначен вам'}), 403
 
+            # Получаем все телефоны клиента
+            cursor.execute(
+                "SELECT id, phone FROM client_phones WHERE client_id = %s",
+                (order['client_id'],)
+            )
+            order['client_phones'] = cursor.fetchall()
+
             # Получаем items
             items_sql = """
                 SELECT oi.service_id, s.name as service_name, oi.quantity, oi.price, oi.total_price
