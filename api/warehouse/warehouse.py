@@ -7,7 +7,7 @@ from datetime import datetime
 import math
 
 
-#Прием с завода на склад
+#Прием с контрагента на склад
 @warehouse_bp.route('/stocks/receive_from_counterparty', methods=['POST'])
 @permission_required('warehouse.receive_from_counterparty')
 def receive_stock_from_counterparty():
@@ -181,15 +181,15 @@ def get_warehouse_stocks():
         conn.close()
 
 
-# Показывает транзакции по приемке с завода на склад
+# Показывает транзакции по приемке с контрагента на склад и выдачи контрагенту
 @warehouse_bp.route('/transactions_from_counterparties', methods=['GET'])
 @permission_required('warehouse.view_incoming_transactions')
 def list_incoming_transactions_from_counterparties():
     start = request.args.get('start_date')
     end = request.args.get('end_date')
     
-    where_clauses = ["t.operation_type = %s"]
-    params = [TransactionTypes.INVENTORY_IN]
+    where_clauses = ["t.operation_type IN (%s, %s)"]
+    params = [TransactionTypes.INVENTORY_IN, TransactionTypes.INVENTORY_OUT]
 
     if start:
         try:
@@ -278,3 +278,113 @@ def list_incoming_transactions_from_counterparties():
         conn.close()
 
 
+#Отгрузка со склада контрагенту
+@warehouse_bp.route('/stocks/send_to_counterparty', methods=['POST'])
+@permission_required('warehouse.send_to_counterparty')
+def send_stock_to_counterparty():
+    data = request.get_json() or {}
+    required = ['from_location_id', 'to_location_id', 'product_id', 'product_state_id', 'quantity']
+    if not all(k in data for k in required):
+        return jsonify({'error': 'Отсутствуют обязательные поля'}), 400
+
+    try:
+        from_loc_id = int(data['from_location_id'])
+        to_loc_id = int(data['to_location_id'])
+        product_id = int(data['product_id'])
+        product_state_id = int(data['product_state_id'])
+        quantity = float(data['quantity'])
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Неверные типы данных в полях'}), 400
+
+    if quantity <= 0:
+        return jsonify({'error': 'Количество должно быть больше нуля'}), 400
+
+    if from_loc_id == to_loc_id:
+        return jsonify({'error': 'from_location и to_location не могут быть одинаковыми'}), 400
+
+    conn = Db.get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, name, type FROM locations WHERE id IN (%s, %s)",
+                (from_loc_id, to_loc_id)
+            )
+            locs = cursor.fetchall()
+            if len(locs) != 2:
+                return jsonify({'error': 'Одна или обе локации не найдены'}), 404
+
+            loc_map = {l['id']: l for l in locs}
+            from_loc = loc_map.get(from_loc_id)
+            to_loc = loc_map.get(to_loc_id)
+
+            if from_loc['type'] != 'warehouse':
+                return jsonify({'error': 'from_location должен быть типа "warehouse"'}), 400
+            if to_loc['type'] != 'counterparty':
+                return jsonify({'error': 'to_location должен быть типа "counterparty"'}), 400
+
+            cursor.execute("SELECT id, name FROM products WHERE id=%s", (product_id,))
+            product = cursor.fetchone()
+            if not product:
+                return jsonify({'error': 'Товар не найден'}), 404
+
+            cursor.execute("SELECT id, name FROM product_states WHERE id=%s", (product_state_id,))
+            product_state = cursor.fetchone()
+            if not product_state:
+                return jsonify({'error': 'Состояние товара не найдено'}), 404
+
+            user_id = session.get('user_id')
+
+            conn.begin()
+
+            cursor.execute(
+                """
+                SELECT id, quantity FROM stocks
+                WHERE location_id=%s AND product_id=%s AND product_state_id=%s
+                FOR UPDATE
+                """,
+                (from_loc_id, product_id, product_state_id)
+            )
+            stock = cursor.fetchone()
+            if not stock:
+                conn.rollback()
+                return jsonify({'error': 'Товар не найден на складе'}), 404
+            if stock['quantity'] < quantity:
+                conn.rollback()
+                return jsonify({'error': 'Недостаточно товара на складе'}), 400
+
+            cursor.execute(
+                "UPDATE stocks SET quantity = quantity - %s WHERE id=%s",
+                (quantity, stock['id'])
+            )
+
+            cursor.execute(
+                """
+                INSERT INTO transactions
+                (operation_type, from_location_id, to_location_id, product_id, product_state_id, quantity, user_id, note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (TransactionTypes.INVENTORY_OUT, from_loc_id, to_loc_id, product_id, product_state_id, quantity, user_id, data.get('note'))
+            )
+            transaction_id = cursor.lastrowid
+
+            conn.commit()
+
+            result = {
+                "id": transaction_id,
+                "operation_type": TransactionTypes.INVENTORY_OUT,
+                "from_location": {"id": from_loc['id'], "name": from_loc['name']},
+                "to_location": {"id": to_loc['id'], "name": to_loc['name']},
+                "product": {"id": product['id'], "name": product['name']},
+                "product_state": {"id": product_state['id'], "name": product_state['name']},
+                "quantity": quantity,
+                "user_id": user_id,
+                "note": data.get('note')
+            }
+
+        return jsonify(result), 201
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': 'Ошибка при сохранении транзакции', 'detail': str(e)}), 500
+    finally:
+        conn.close()

@@ -184,6 +184,7 @@ PERMISSIONS = [
 
     # warehouse
     ("warehouse.receive_from_counterparty",  "Приём товаров с завода на склад"),
+    ("warehouse.send_to_counterparty",       "Отгрузка товаров со склада контрагенту"),
     ("warehouse.view_stocks",                "Просмотр текущих остатков на складе"),
     ("warehouse.view_incoming_transactions", "Просмотр транзакций приёмки с завода"),
     ("warehouse.create_transaction",         "Создание транзакции (перемещение товара между локациями)"),

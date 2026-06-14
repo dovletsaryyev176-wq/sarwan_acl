@@ -74,11 +74,12 @@ class ServiceTypes:
     }
 
 class TransactionTypes:
-    INVENTORY_IN = 'inventory_in'      # Приход с завода
+    INVENTORY_IN = 'inventory_in'      # Приход с контрагента
     COURIER_ISSUE = 'courier_issue'    # Выдача курьеру (Утро)
     COURIER_RETURN = 'courier_return'  # Прием от курьера (Вечер)
     COURIER_TRANSFER = 'courier_transfer' # Между курьерами
     WRITE_OFF = 'write_off'            # Списание (утиль/брак)
+    INVENTORY_OUT = 'inventory_out'      # Уход контрагенту
 
     
     LABELS = {
@@ -87,6 +88,7 @@ class TransactionTypes:
         COURIER_RETURN: {'ru': 'Прием от курьера', 'tm': 'Kurýerden kabul etmek'},
         COURIER_TRANSFER: {'ru': 'Перевод между курьерами', 'tm': 'Başga kurýere geçirmek'},
         WRITE_OFF: {'ru': 'Списание', 'tm': 'Hasapdan çykarmak'},
+        INVENTORY_OUT: {'ru': 'Уход контрагенту', 'tm': 'Kontragentde ugradyldy'},
     }
 
 class PromotionTypes:
