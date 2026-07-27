@@ -13,6 +13,7 @@ from api.accounter import accounter_bp
 from api.director import director_bp
 from api.marketing import marketing_bp
 from api.worker import worker_bp
+from api.client_app import client_bp
 
 def create_app():
     app = Flask(__name__)
@@ -55,6 +56,7 @@ def create_app():
     app.register_blueprint(director_bp, url_prefix='/api/director')
     app.register_blueprint(marketing_bp,url_prefix='/api/marketing')
     app.register_blueprint(worker_bp,url_prefix='/api/worker')
+    app.register_blueprint(client_bp, url_prefix='/api/client')
 
     uploads_dir = os.path.join(app.root_path, 'uploads')
 
