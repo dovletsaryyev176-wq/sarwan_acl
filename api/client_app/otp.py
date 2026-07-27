@@ -1,3 +1,5 @@
+import logging
+import os
 import secrets
 from datetime import datetime, timedelta
 
@@ -5,6 +7,8 @@ import requests
 
 from .security import digest
 from .utils import to_storage_format
+
+logger = logging.getLogger('client_app.otp')
 
 # Параметры одноразовых кодов
 OTP_LENGTH = 4
@@ -17,6 +21,25 @@ SMS_GATEWAY_URL = 'https://tagma.biz/otp/send-code'
 SMS_TEMPLATE_KEY = 'client_otp'
 SMS_FALLBACK_TEXT = 'Sarwan: tassyklayys kody {code}'
 SMS_TIMEOUT_SECONDS = 10
+
+
+def _dev_mode():
+    """
+    Режим локальной разработки: SMS не отправляется, код печатается в консоль.
+
+    Нужен потому, что код хранится в виде HMAC и восстановить его из базы
+    нельзя. Без этого режима разработчик мобильного приложения либо шлёт
+    настоящие SMS на настоящие номера, либо не может войти вообще.
+
+    Включается CLIENT_OTP_DEV_MODE=1 в .env.
+
+    Защита от случайного включения на боевом сервере: при FLASK_ENV=production
+    режим принудительно выключен, что бы ни стояло во флаге. В .env продакшена
+    FLASK_ENV=production уже прописан.
+    """
+    if os.getenv('FLASK_ENV', '').strip().lower() == 'production':
+        return False
+    return os.getenv('CLIENT_OTP_DEV_MODE', '').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
 class SmsError(Exception):
@@ -74,6 +97,14 @@ def send_sms_code(cursor, phone, code):
     text = template.replace('{code}', code)
     if code not in text:
         text = '{} {}'.format(text, code)
+
+    if _dev_mode():
+        logger.warning(
+            '\n%s\n  РЕЖИМ РАЗРАБОТКИ: SMS НЕ ОТПРАВЛЕНА\n'
+            '  телефон: %s\n  код:     %s\n%s',
+            '=' * 60, to_storage_format(phone), code, '=' * 60,
+        )
+        return
 
     try:
         response = requests.post(
