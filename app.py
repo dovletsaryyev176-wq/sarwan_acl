@@ -14,6 +14,7 @@ from api.director import director_bp
 from api.marketing import marketing_bp
 from api.worker import worker_bp
 from api.client_app import client_bp
+from audit import init_audit
 
 def create_app():
     app = Flask(__name__)
@@ -63,6 +64,8 @@ def create_app():
     @app.route('/uploads/<path:filename>')
     def serve_upload(filename):
         return send_from_directory(uploads_dir, filename)
+
+    init_audit(app)
 
     return app
 
